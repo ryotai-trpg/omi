@@ -56,6 +56,7 @@ from config.episodes import (
 from utils.episodes import client_gate, metrics
 from utils.episodes.moment import MomentInput
 from utils import executors
+from utils.text_utils import transcript_word_count
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +136,7 @@ class MomentTracker:
                     buf.first_wall = wall
                 buf.segments.extend(fresh)
                 del buf.segments[:-MAX_BUFFERED_SEGMENTS]
-                buf.words += sum(len(str(s.get('text') or '').split()) for s in fresh)
+                buf.words += sum(transcript_word_count(str(s.get('text') or '')) for s in fresh)
                 buf.last_wall = wall
                 if buf.words >= MOMENT_MAX_WORDS:
                     ended.append(self._moment(buf, 'rollover'))

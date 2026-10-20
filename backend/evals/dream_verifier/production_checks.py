@@ -22,6 +22,7 @@ from evals.dream_verifier.contracts import BACKEND
 from models.agent_refs import cited_value
 from models.person_confidence import AUTO_CONFIRMED, CARD_CONFIRMS, CARD_PICKS, MANUAL_LABELS, evidence_count
 from utils.agent_capabilities.guards import timestamp
+from utils.text_utils import transcript_word_count
 from utils.agent_capabilities.registry import KINDS
 from utils.agent_capabilities.text_edits import replace_term
 from utils.conversations.fragment_visibility import is_completed_rule_discard, is_user_curated
@@ -68,6 +69,7 @@ def production_namespace() -> dict[str, Any]:
         'CARD_PICKS': CARD_PICKS,
         'MANUAL_LABELS': MANUAL_LABELS,
         'evidence_count': evidence_count,
+        'transcript_word_count': transcript_word_count,
     }
     definitions('database/conversations.py', {'is_soft_deleted', 'is_visible_conversation'}, namespace)
     namespace['conversations'] = SimpleNamespace(is_visible_conversation=namespace['is_visible_conversation'])

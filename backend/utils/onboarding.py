@@ -9,7 +9,7 @@ import logging
 from utils.executors import db_executor, llm_executor, run_blocking
 from utils.llm.clients import get_llm
 from utils.llm.usage_tracker import track_usage, Features
-from utils.llm.conversation_processing import _word_count  # type: ignore[reportPrivateUsage]  # shared word count helper
+from utils.text_utils import transcript_word_count
 
 logger = logging.getLogger(__name__)
 
@@ -212,7 +212,7 @@ class OnboardingHandler:
             while self.current_question and not self.completed:
                 question = self.current_question['question']
                 answered = False
-                if _word_count(transcript) >= 2:
+                if transcript_word_count(transcript) >= 2:
                     answered = await self._ai_check_answer(question, transcript)
                 if not answered:
                     break
@@ -265,7 +265,7 @@ Reply with only "yes" or "no"."""
         except Exception as e:
             logger.error(f"AI check error: {e}")
             # Fallback: 2+ words is an answer
-            return len(transcript.split()) >= 2
+            return transcript_word_count(transcript) >= 2
 
     async def _send_event(self, event_type: str, data: Dict[str, Any]) -> None:
         """Send message event to client"""

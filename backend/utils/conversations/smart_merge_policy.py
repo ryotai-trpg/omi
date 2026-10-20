@@ -39,6 +39,7 @@ from utils.conversations.smart_merge_state import Fragment
 from utils.conversations.wake_word import find_wake_word_matches
 from utils.sync.clock_run import SYNC_CLOCK_RUN_FIELD
 from utils.stt.speaker_identity import ConversationSpeakerIdAllocator
+from utils.text_utils import transcript_word_count
 
 SMART_MERGE_FIELD = 'smart_merge'
 DECISION_FIELD = 'smart_merge_decision'
@@ -141,7 +142,7 @@ def has_wake_word(segments: Sequence[Mapping[str, Any]]) -> bool:
 
 
 def word_count(segments: Iterable[Mapping[str, Any]]) -> int:
-    return sum(len(str(segment.get('text') or '').split()) for segment in segments)
+    return sum(transcript_word_count(str(segment.get('text') or '')) for segment in segments)
 
 
 def _epoch(value: Any) -> Optional[float]:

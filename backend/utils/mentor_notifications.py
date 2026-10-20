@@ -11,6 +11,7 @@ import logging
 from typing import List, Dict, Any
 
 from database.notifications import get_mentor_notification_frequency
+from utils.text_utils import transcript_word_count
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +126,7 @@ def process_mentor_notification(uid: str, segments: List[Dict[str, Any]]) -> Lis
 
             # Count words after silence
             if buffer_data['silence_detected']:
-                words_in_segment = len(text.split())
+                words_in_segment = transcript_word_count(text)
                 buffer_data['words_after_silence'] += words_in_segment
 
                 # If we have enough words, start fresh conversation

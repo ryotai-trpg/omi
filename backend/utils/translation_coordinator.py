@@ -38,6 +38,7 @@ from config.translation import (
 from utils.translation_core.planner import TranslationMode
 from utils.translation_demand import DemandPolicy, TranslationDemand
 from utils.translation_language import detect_language_with_confidence, expected_foreign_language
+from utils.text_utils import has_at_least_words
 from utils.executors import db_executor, sync_executor, run_blocking
 from utils.translation_cache import ConversationLanguageState, should_persist_translation, _normalize_base_language  # type: ignore[reportPrivateUsage]  # internal helper, intentional cross-module use
 
@@ -101,9 +102,9 @@ def _compute_stability_signals(
     # Soft boundary: text open for >=3s
     if last_update_at > 0 and (now - last_update_at) >= SOFT_BOUNDARY_OPEN_SECONDS:
         signals.add(STABILITY_SOFT_BOUNDARY)
-    # Soft boundary: >=12 tokens
-    token_count = len(text.split())
-    if token_count >= SOFT_BOUNDARY_TOKEN_COUNT:
+    # Soft boundary: >=12 words (CJK counted with the shared transcript word
+    # floor; runs per partial update, so stop counting at the threshold)
+    if has_at_least_words(text, SOFT_BOUNDARY_TOKEN_COUNT):
         signals.add(STABILITY_SOFT_BOUNDARY)
     return signals
 

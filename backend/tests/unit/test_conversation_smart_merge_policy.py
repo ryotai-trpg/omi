@@ -7,6 +7,7 @@ import pytest
 from config import conversation_smart_merge as config
 from utils.conversations import smart_merge_policy as policy
 from utils.conversations.smart_merge_state import Fragment
+from tests.unit.fixtures.cjk_text import JA_SENTENCE
 
 T0 = datetime(2026, 9, 28, 23, 0, tzinfo=timezone.utc)
 WORDS = ' '.join(['word'] * 30)
@@ -286,3 +287,15 @@ def test_budget_waiting_conversations_never_merge_without_processing_consent():
     waiting['processing_deferred'] = False
     assert policy.new_conversation_skip(waiting, _segments(), capture_end=True) is None
     assert policy.predecessor_status_skip(waiting) is None
+
+
+def test_japanese_fragments_meet_the_25_word_floor():
+    """CJK text has no spaces, so a whitespace count saw one word per sentence and never merged (#7065)."""
+    # Twenty-eight CJK letters: fourteen words by the shared approximation (two letters per word).
+    survivor, s_segments, new, n_segments = _pair()
+    ja_new = _segments(count=2, text=JA_SENTENCE, first_start=0.0)
+    assert policy.word_count(ja_new) == 28
+    assert policy.check_pair(survivor, s_segments, new, ja_new).reason != 'too_few_words'
+    too_short = _segments(count=1, text=JA_SENTENCE, first_start=0.0)
+    assert policy.check_pair(survivor, s_segments, new, too_short).reason == 'too_few_words'
+    assert policy.word_count(_segments(count=2)) == 60  # English: still whitespace tokens

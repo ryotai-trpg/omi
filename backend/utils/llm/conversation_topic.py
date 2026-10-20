@@ -11,7 +11,7 @@ from utils.llm.output_language import resolve_output_language
 from utils.llm.notes_language_inputs import in_profile_segments
 from utils.llm.notes_short_clip import NOTES_MIN_WORDS
 from utils.conversations.deterministic_minimum import first_sentence, truncate_on_word_boundary
-from utils.conversations.relevance_rules import transcript_word_count
+from utils.text_utils import transcript_word_count
 
 from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field

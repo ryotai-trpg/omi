@@ -8,6 +8,7 @@ import re
 import unicodedata
 
 from models.agent_refs import base_ref
+from utils.text_utils import CJK_LETTERS_PER_WORD, is_cjk_letter
 
 # Code-configurable threshold; no rollout/environment switch changes admission.
 MIN_SUMMARY_TRANSCRIPT_WORDS = 40
@@ -136,17 +137,26 @@ RECORD_REF = re.compile(
 
 
 def has_summary_speech(speech, minimum):
-    count, in_word = 0, False
+    count, cjk_letters, in_word = 0, 0, False
     if minimum <= 0:
         return True
     # Normalize one character at a time, stopping at the threshold. Combining
     # accents disappear without splitting words or scanning a whole recording.
+    # Other scripts keep this floor's alphanumeric-run count (not whitespace
+    # tokens); CJK letters take the shared floor's two-per-word rule, because an
+    # alphanumeric run would count a whole unspaced clause as one word (#7065).
     for char in speech:
+        if is_cjk_letter(char):
+            cjk_letters += 1
+            in_word = False
+            if count + cjk_letters // CJK_LETTERS_PER_WORD >= minimum:
+                return True
+            continue
         for letter in normalized(char):
             word = letter.isalnum()
             if word and not in_word:
                 count += 1
-                if count >= minimum:
+                if count + cjk_letters // CJK_LETTERS_PER_WORD >= minimum:
                     return True
             in_word = word
     return False

@@ -8,6 +8,7 @@ from config.refactor_modes import serving_for, shadow_or_serve
 from utils.llm.notes_refactor_metrics import shadow
 from utils.conversations.transcript_for_llm import owner_safe_transcript_segments, render_cluster_transcript
 from utils.llm.notes_language_inputs import in_profile_segments
+from utils.text_utils import transcript_word_count
 
 
 def name_segments(segments: Sequence[Mapping[str, Any]], names: Mapping[str, str]) -> list[dict[str, Any]]:
@@ -51,4 +52,4 @@ def render_segments(
         if row.get('person_id') and row.get('person_name')
     }
     text, _map = render_cluster_transcript(selected, names=names, owner_name=owner_name, evidence=evidence)
-    return text, sum(len(str(row.get('text') or '').split()) for row in selected)
+    return text, sum(transcript_word_count(str(row.get('text') or '')) for row in selected)

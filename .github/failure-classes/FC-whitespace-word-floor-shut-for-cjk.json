@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "id": "FC-whitespace-word-floor-shut-for-cjk",
+  "violated_contract": "A transcript word floor must count words the same way for every script the product transcribes. Han, kana and the other unspaced CJK scripts put no spaces between words, so a floor that reads len(text.split()) sees one word per sentence and silently never opens for Japanese or Chinese speech: nothing fails, English tests stay green, and the feature behind the floor is simply absent for those users. (Korean is spaced and was never affected; Thai is unspaced but narrow and is outside this class.) #7065 reported it for conversation discard and #7104 fixed that one floor; the same counter was then re-implemented by hand in recovery, and the smart-merge, mentor-gate, mentor-silence, follow-up, Dream summary, Dream cleanup, episode-tier, onboarding-fallback, language-vote, translation soft-boundary and live episode moment floors were written with .split() afterwards.",
+  "canonical_prevention": "Every transcript word floor counts with utils.text_utils.transcript_word_count: the whitespace tokens of the non-CJK text plus one word per two CJK letters (Han, kana and other unspaced scripts; Hangul and fullwidth Latin keep their spaces; wide punctuation, symbols and emoji are separators; narrow punctuation trailing a CJK letter belongs to that word; a whitespace chunk holding a CJK letter never counts below one), so text with no wide characters counts exactly len(text.split()) and appending text never lowers the count. The one exception is the Dream admission floor, which keeps its alphanumeric-run count for other scripts and applies the CJK rule through is_cjk_letter. A floor must not call .split() for its count, and its test must show a Japanese transcript opens it at the same threshold as English.",
+  "canonical_prevention_artifact": [
+    "backend/tests/unit/test_cjk_word_count_gates.py"
+  ],
+  "evidence_prs": [
+    7104
+  ],
+  "scope_hints": [
+    "backend/utils/text_utils.py",
+    "backend/utils/conversations/smart_merge_policy.py",
+    "backend/utils/conversations/recovery.py",
+    "backend/utils/conversations/relevance_rules.py",
+    "backend/utils/conversations/relevance_jev.py",
+    "backend/utils/llm/conversation_processing.py",
+    "backend/utils/conversations/relevance_content.py",
+    "backend/utils/llm/conversation_topic.py",
+    "backend/utils/conversations/episode_tiers.py",
+    "backend/utils/episodes/live.py",
+    "backend/utils/episodes/incremental.py",
+    "backend/utils/episodes/moment_render.py",
+    "backend/utils/app_integrations.py",
+    "backend/utils/mentor_notifications.py",
+    "backend/utils/llm/followup.py",
+    "backend/utils/agent_capabilities/guards.py",
+    "backend/utils/agent_capabilities/cleanup_edits.py",
+    "backend/utils/onboarding.py",
+    "backend/utils/stt/pre_recorded.py",
+    "backend/utils/translation_coordinator.py"
+  ],
+  "status": "open"
+}

@@ -12,8 +12,9 @@ from models.boundary_evidence import BoundarySignal
 from models.conversation_enums import ContentKind
 from models.speaker_evidence import OWNER, SpeakerEvidence
 from utils.capture.media import media_playback_signals, screen_time
-from utils.conversations.relevance_rules import EXPLICIT_REMINDER_RE, transcript_word_count
+from utils.conversations.relevance_rules import EXPLICIT_REMINDER_RE
 from utils.conversations.relevance_media_metrics import observe
+from utils.text_utils import transcript_word_count
 
 MEDIA_NOISE_MODE_ENV = 'MEDIA_NOISE_MODE'
 FLAG = MEDIA_NOISE_MODE_ENV

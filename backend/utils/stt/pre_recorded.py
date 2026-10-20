@@ -56,6 +56,7 @@ from utils.stt.vendor_guard import (
     record_breaker_success,
     record_vendor_burn,
 )
+from utils.text_utils import transcript_word_count
 
 _DG_TIMEOUT = httpx.Timeout(connect=10.0, read=120.0, write=30.0, pool=10.0)
 _MODULATE_TIMEOUT = httpx.Timeout(connect=10.0, read=300.0, write=30.0, pool=10.0)
@@ -703,7 +704,7 @@ def modulate_prerecorded_from_bytes(
             lang = utt.get('language')
             if lang:
                 lang = lang.split('-')[0].split('_')[0].lower()
-                language_votes.append((lang, len(text.split()), max(0, duration_ms)))
+                language_votes.append((lang, transcript_word_count(text), max(0, duration_ms)))
 
         top_text = result.get('text')
         if not words and isinstance(top_text, str) and top_text.strip():
@@ -713,7 +714,7 @@ def modulate_prerecorded_from_bytes(
         if return_language:
             # Tiny acknowledgments are noisy detection evidence. Only use them
             # when the provider supplied no longer transcribed utterance.
-            has_long_utterance = any(len(utt.get('text', '').split()) >= 3 for utt in utterances)
+            has_long_utterance = any(transcript_word_count(utt.get('text', '')) >= 3 for utt in utterances)
             totals: Dict[str, Tuple[int, float]] = {}
             for lang, word_count, duration in language_votes:
                 if has_long_utterance and word_count < 3:

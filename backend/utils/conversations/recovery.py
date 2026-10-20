@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import json
 import os
-import unicodedata
 from collections.abc import Mapping
 from typing import Any
+
+from utils.text_utils import transcript_word_count
 
 RECOVERY_MAX_AUDIO_FILE_IDS = 256
 RECOVERY_QUIET_MINIMUM_MAX_WORDS = 12
@@ -48,16 +49,10 @@ def recovery_transcript_word_count(conversation: Any) -> int:
         text = _field(segment, 'text')
         if isinstance(text, str) and text.strip():
             parts.append(text.strip())
-    text = ' '.join(parts)
-    if not text:
-        return 0
-    # Match the relevance floor's CJK approximation: two wide characters per
-    # word. Other scripts use whitespace tokens, which errs toward retaining
-    # a short transcript rather than discarding a real utterance.
-    wide_chars = sum(unicodedata.east_asian_width(char) in ('W', 'F', 'H') for char in text)
-    if wide_chars > len(text) * 0.3:
-        return wide_chars // 2
-    return len(text.split())
+    # The shared floor's CJK approximation (two CJK letters per word); other
+    # scripts use whitespace tokens, which errs toward retaining a short
+    # transcript rather than discarding a real utterance.
+    return transcript_word_count(' '.join(parts))
 
 
 def recovery_transcript_below_content_floor(conversation: Any) -> bool:

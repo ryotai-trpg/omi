@@ -109,6 +109,7 @@ _SYS_MODULE_NAMES = [
     "database.action_items",
     "database.notifications",
     "utils",
+    "utils.text_utils",
     "utils.model_text",
     "utils.user_clock",
     "utils.notifications",
@@ -403,9 +404,10 @@ _load_module_from_file(
     "utils.conversations.summary_selection",
     BACKEND_DIR / "utils" / "conversations" / "summary_selection.py",
 )
-# relevance_rules is stdlib-only; load the real module so conversation_processing's
-# module-scope `from utils.conversations.relevance_rules import KEEP_WORD_COUNT`
-# resolves against production's threshold, not a stub package.
+# text_utils and relevance_rules are stdlib-only; load the real modules so
+# conversation_processing's module-scope imports of transcript_word_count and
+# KEEP_WORD_COUNT resolve against production, not a stub package.
+_load_module_from_file("utils.text_utils", BACKEND_DIR / "utils" / "text_utils.py")
 _load_module_from_file(
     "utils.conversations.relevance_rules",
     BACKEND_DIR / "utils" / "conversations" / "relevance_rules.py",
