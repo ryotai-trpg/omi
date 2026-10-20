@@ -48,6 +48,7 @@ from utils.llm.proactive_notification import (
     validate_notification,
 )
 from utils.mentor_notifications import MessageBuffer, message_buffer, process_mentor_notification
+from tests.unit.fixtures.cjk_text import JA_SENTENCE, JA_SENTENCE_WORDS
 
 _BACKEND = Path(__file__).resolve().parents[2]
 
@@ -883,3 +884,17 @@ def test_validation_result_model():
         reasoning="This would genuinely help the user.",
     )
     assert result.approved is True
+
+
+def test_silence_ends_on_japanese_speech():
+    """The five-word reset after silence must count CJK speech, not whitespace tokens (#7065)."""
+    message_buffer.buffers.clear()
+    data = message_buffer.get_buffer("test_uid_cjk_silence")
+    data['silence_detected'] = True
+
+    # Fourteen words by the shared CJK approximation, one by ``str.split``.
+    process_mentor_notification("test_uid_cjk_silence", [{"text": JA_SENTENCE, "start": 1000, "is_user": True}])
+
+    data = message_buffer.get_buffer("test_uid_cjk_silence")
+    assert data['silence_detected'] is False
+    assert data['words_after_silence'] == JA_SENTENCE_WORDS == 14

@@ -80,6 +80,7 @@ from utils.conversations.render import conversation_to_dict, redact_conversation
 from utils.log_sanitizer import sanitize
 from utils.mentor_notifications import process_mentor_notification
 from utils.episodes.live import on_realtime_segments
+from utils.text_utils import transcript_word_count
 from utils.journey_metrics_contract import ClientKind, bounded_client_kind, resolve_client_kind
 from utils.observability.fallback import record_fallback
 from utils.observability.journeys import ClientJourneyAttempt
@@ -543,6 +544,11 @@ MENTOR_GATE_DAILY_CAP_ENV = 'MENTOR_GATE_DAILY_CAP'
 MENTOR_GATE_MIN_NEW_WORDS_DEFAULT = 120
 MENTOR_GATE_MIN_SECONDS_DEFAULT = 90
 MENTOR_GATE_DAILY_CAP_DEFAULT = 60
+# Which word count a debounce record's `words` and `anchor` were taken with.
+# 1 (or absent): whitespace tokens. 2: utils.text_utils.transcript_word_count,
+# which counts CJK letters two per word. A record from another counter must not
+# have its numbers compared with this one's.
+MENTOR_GATE_WORD_COUNT_VERSION = 2
 
 
 def _mentor_gate_int_env(name: str, default: int, *, minimum: int, maximum: int) -> int:
@@ -556,20 +562,22 @@ def _mentor_gate_int_env(name: str, default: int, *, minimum: int, maximum: int)
         return default
 
 
+def _mentor_message_words(message: dict) -> int:
+    return transcript_word_count(str(message.get('text') or ''))
+
+
 def _mentor_conversation_word_count(conversation_messages: list[dict]) -> int:
     # User speech only. The gate evaluates what THE USER said, and the buffer
     # carries the other speaker too: a long other-speaker exchange must not
     # satisfy MIN_NEW_WORDS on its own.
-    return sum(
-        len(str(message.get('text') or '').split()) for message in conversation_messages if message.get('is_user')
-    )
+    return sum(_mentor_message_words(message) for message in conversation_messages if message.get('is_user'))
 
 
 def _mentor_gate_tail_anchor(conversation_messages: list[dict]) -> list | None:
     """[timestamp, word_count] of the buffer's last user message, or None."""
     for message in reversed(conversation_messages):
         if message.get('is_user'):
-            return [float(message.get('timestamp') or 0), len(str(message.get('text') or '').split())]
+            return [float(message.get('timestamp') or 0), _mentor_message_words(message)]
     return None
 
 
@@ -586,6 +594,7 @@ def _mentor_gate_new_words(conversation_messages: list[dict], state: dict, word_
     is exactly how a shrinking buffer used to replay old speech as new.
     """
     anchor = state.get('anchor')
+    same_counter = int(state.get('counter') or 1) == MENTOR_GATE_WORD_COUNT_VERSION
     if isinstance(anchor, (list, tuple)) and len(anchor) == 2:
         anchor_ts, anchor_words = float(anchor[0]), int(anchor[1])
         for index in range(len(conversation_messages) - 1, -1, -1):
@@ -594,18 +603,24 @@ def _mentor_gate_new_words(conversation_messages: list[dict], state: dict, word_
                 continue
             if float(message.get('timestamp') or 0) != anchor_ts:
                 continue
-            current_words = len(str(message.get('text') or '').split())
+            current_words = _mentor_message_words(message)
+            if not same_counter:
+                # The anchor was counted by another rule, so its number says
+                # nothing about appended speech; coalescing onto that message
+                # closed seconds after the record, long before a deploy.
+                anchor_words = current_words
             if current_words < anchor_words:
                 # Same recording offset but less speech: a restarted
                 # conversation that happens to reuse the offset, not the anchor.
                 continue
             appended = current_words - anchor_words
-            after = sum(
-                len(str(m.get('text') or '').split()) for m in conversation_messages[index + 1 :] if m.get('is_user')
-            )
+            after = sum(_mentor_message_words(m) for m in conversation_messages[index + 1 :] if m.get('is_user'))
             return appended + after
         return word_count
-    # Pre-anchor record (or malformed state): keep the old delta heuristic.
+    # Pre-anchor record (or malformed state): keep the old delta heuristic,
+    # unless the record's total came from another counter and cannot be compared.
+    if not same_counter:
+        return word_count
     previous_words = int(state.get('words') or 0)
     return word_count - previous_words if word_count >= previous_words else word_count
 
@@ -625,6 +640,7 @@ def _record_mentor_gate_evaluation(
             'day': today,
             'count': count,
             'anchor': _mentor_gate_tail_anchor(conversation_messages),
+            'counter': MENTOR_GATE_WORD_COUNT_VERSION,
         },
     )
 

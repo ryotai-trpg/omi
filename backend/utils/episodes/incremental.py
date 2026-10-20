@@ -28,6 +28,7 @@ from config.episodes import (
 )
 from config.refactor_modes import serving_for, shadow_or_serve
 from utils.episodes.moment_render import render_segments
+from utils.text_utils import transcript_word_count
 from utils.llm.notes_packet import get_evidence
 from utils.llm.notes_refactor_metrics import shadow
 from utils.llm.output_language import resolve_output_language
@@ -134,7 +135,7 @@ def _legacy_moment(segments: Sequence[Mapping[str, Any]]) -> tuple[str, int]:
         text = str(segment.get('text') or '').strip()
         if not text:
             continue
-        words += len(text.split())
+        words += transcript_word_count(text)
         label = speaker_label(segment)
         if lines and lines[-1][0] == label:
             lines[-1][1] += ' ' + text

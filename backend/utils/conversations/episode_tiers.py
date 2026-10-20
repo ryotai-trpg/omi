@@ -2,9 +2,11 @@
 
 from dataclasses import replace
 
+from utils.text_utils import transcript_word_count
+
 
 def episode_tier(items, settings):
-    words = sum(len(item.content.split()) for item in items if item.source_kind == 'speech')
+    words = sum(transcript_word_count(item.content) for item in items if item.source_kind == 'speech')
     kinds = len({item.source_kind for item in items})
     if settings.tiered and settings.effort == 'default':
         if words >= settings.tier_min_words and kinds >= settings.tier_min_source_kinds:

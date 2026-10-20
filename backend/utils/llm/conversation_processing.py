@@ -47,7 +47,8 @@ from utils.conversations.wake_word import (
     WAKE_WORD_PROMPT_RULES,
     has_structural_wake_word_marker,
 )
-from utils.conversations.relevance_rules import KEEP_WORD_COUNT, transcript_word_count
+from utils.conversations.relevance_rules import KEEP_WORD_COUNT
+from utils.text_utils import transcript_word_count
 from utils.conversations.summary_selection import render_sections_markdown
 from utils.llm.action_item_normalization import normalize_action_item_due_dates as _normalize_action_item_due_dates
 from utils.llm.meeting_notes_rich_prompts import NotesFrameImage, rich_static_instructions, screen_frames_message
@@ -136,10 +137,6 @@ class SpeakerIdMatch(BaseModel):
     speaker_id: int = Field(description="The speaker id assigned to the segment")
 
 
-def _word_count(text: str) -> int:
-    return transcript_word_count(text)
-
-
 def _content_str(response: Any) -> str:
     content = response.content
     return content if isinstance(content, str) else str(content)
@@ -175,7 +172,7 @@ def should_discard_conversation(
     """
     # If there's a long transcript, it's very unlikely we want to discard it.
     # This is a performance optimization to avoid unnecessary LLM calls.
-    word_count = _word_count(transcript) if transcript and transcript.strip() else 0
+    word_count = transcript_word_count(transcript) if transcript and transcript.strip() else 0
     if word_count > KEEP_WORD_COUNT:
         return False
     has_photos = photos and ConversationPhoto.photos_as_string(photos) != 'None'
@@ -435,7 +432,7 @@ def _get_shaped_conversation_notes(
     frames = kwargs.get('screen_frames') or ()
     # Never reuse the old prefix metadata: it may already have bound a roster.
     context = prefix.shaped_context or ('FULL TRANSCRIPT\n' + prefix.context.split('FULL TRANSCRIPT\n', 1)[-1])
-    words = _word_count(context)
+    words = transcript_word_count(context)
     rich_mode = kwargs.get('rich_context_enabled', False)
     screen_count = len(frames)
     escalated, escalation_reason = _shaped_notes_tier(words, screen_count)

@@ -4,6 +4,7 @@ from models.other import Person
 from models.transcript_segment import TranscriptSegment
 from utils.llm.clients import get_llm
 from utils.llm.usage_tracker import track_usage, Features
+from utils.text_utils import last_words, transcript_word_count
 
 
 def _response_text(response: object) -> str:
@@ -32,13 +33,12 @@ def followup_question_prompt(
     transcript_str = TranscriptSegment.segments_as_string(
         segments, include_timestamps=False, people=people, user_name=user_name
     )
-    words = transcript_str.split()
-    w_count = len(words)
+    w_count = transcript_word_count(transcript_str)
     if w_count < 10:
         return ''
     elif w_count > 100:
-        # trim to last 500 words
-        transcript_str = ' '.join(words[-100:])
+        # trim to the last 100 words
+        transcript_str = last_words(transcript_str, 100)
 
     prompt = f"""
         You will be given the transcript of an in-progress conversation.

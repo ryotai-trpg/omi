@@ -126,20 +126,13 @@ CAPITALISED_HOMOGRAPHS: FrozenSet[str] = frozenset({'May', 'Will', 'Bill', 'Mark
 # Thresholds.
 FUNCTION_ONLY_MAX_TOKENS = 25  # longer function-word-only runs go to the LLM
 KEEP_WORD_COUNT = 100  # above this the model is never asked; shared with the model tier
+# Word equivalents for the deterministic tier only: ``_tokenise`` has already
+# dropped CJK punctuation and fillers, so its characters are denser than the
+# raw text that ``utils.text_utils.transcript_word_count`` (the model tier's
+# count, and every other transcript word floor's) sees at two per word. Its
+# ``_is_cjk`` also folds Hangul syllables in, which the shared floor counts by
+# whitespace instead; the rule tier's thresholds were measured with this table.
 CJK_CHARS_PER_WORD = 1.5
-
-
-def transcript_word_count(text: str) -> int:
-    """The model tier's word count (``conv_discard`` and the Jev tier share it).
-
-    CJK-dominant text counts two characters as a word; otherwise whitespace tokens.
-    """
-    if not text:
-        return 0
-    cjk_chars = sum(1 for c in text if unicodedata.east_asian_width(c) in ('W', 'F', 'H'))
-    if cjk_chars > len(text) * 0.3:
-        return cjk_chars // 2
-    return len(text.split())
 
 
 _TOKEN_RE = re.compile(r"[^\W_]+(?:'[^\W_]+)*|'(?:re|s|m|ve|ll|d)\b", re.UNICODE)

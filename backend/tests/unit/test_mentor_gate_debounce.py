@@ -22,6 +22,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # The harness builds the full stub set this production module needs at import time.
+from tests.unit.fixtures.cjk_text import ja_text
 from tests.unit.test_realtime_integrations_usage_tracking import integration_harness  # noqa: F401
 
 MESSAGES_SHORT = [{'text': 'we should ship on friday', 'is_user': True}]
@@ -330,3 +331,48 @@ def test_failed_shared_write_does_not_throttle_locally(gate, monkeypatch):
     assert _run(gate) is not None
     assert not gate.local, 'an unpersisted evaluation must not be mirrored'
     assert _run(gate) is not None, 'a failed shared write falls open, not closed'
+
+
+# ── CJK speech (#7065) ────────────────────────────────────────────────────────
+# Japanese has no spaces between words, so a whitespace word count saw a whole
+# sentence as one word and the 120-word floor never opened. The gate now counts
+# with the shared CJK approximation (two wide characters per word).
+
+
+def _ja_messages(words, timestamp=1.0, is_user=True):
+    return [{'text': ja_text(words), 'timestamp': timestamp, 'is_user': is_user}]
+
+
+def test_japanese_speech_opens_the_word_floor(gate):
+    _enable(gate)
+    floor = gate.app.MENTOR_GATE_MIN_NEW_WORDS_DEFAULT
+    assert gate.app._mentor_conversation_word_count(_ja_messages(floor)) == floor
+    assert _run(gate, messages=_ja_messages(floor - 1)) is None
+    assert _run(gate, messages=_ja_messages(floor)) is not None
+
+
+def test_japanese_new_speech_after_the_anchor_is_counted(gate):
+    _enable(gate)
+    floor = gate.app.MENTOR_GATE_MIN_NEW_WORDS_DEFAULT
+    assert _run(gate, messages=_ja_messages(floor)) is not None
+    _age(gate, 10_000)
+    # Replaying the same buffer is not new speech; another floor's worth is.
+    assert _run(gate, messages=_ja_messages(floor)) is None
+    assert _run(gate, messages=_ja_messages(floor) + _ja_messages(floor, timestamp=2.0)) is not None
+
+
+def test_a_record_from_the_whitespace_counter_reports_no_phantom_new_speech(gate, uid='uid-debounce'):
+    """An anchor counted by the old rule must not turn the same message into new speech after a deploy."""
+    _enable(gate)
+    floor = gate.app.MENTOR_GATE_MIN_NEW_WORDS_DEFAULT
+    messages = _ja_messages(floor)
+    assert _run(gate, messages=messages) is not None
+    assert gate.shared.data[uid]['counter'] == gate.app.MENTOR_GATE_WORD_COUNT_VERSION
+    _age(gate, 10_000)
+    for record in (gate.shared.data[uid], gate.local[uid][0]):
+        record['counter'] = 1
+        record['words'] = 1
+        record['anchor'] = [1.0, 1]  # what str.split saw for the Japanese tail message
+    assert _run(gate, messages=messages) is None
+    assert _run(gate, messages=messages + _ja_messages(floor, timestamp=2.0)) is not None
+    assert gate.shared.data[uid]['counter'] == gate.app.MENTOR_GATE_WORD_COUNT_VERSION

@@ -18,7 +18,8 @@ from __future__ import annotations
 from typing import Any, Optional, Sequence
 
 from models.transcript_segment import TranscriptSegment
-from utils.conversations.relevance_rules import KEEP_WORD_COUNT, transcript_word_count
+from utils.conversations.relevance_rules import KEEP_WORD_COUNT
+from utils.text_utils import transcript_word_count
 from utils.llm.jev_client import ask_jev
 from utils.metrics import record_relevance_scorer_outcome
 from utils.conversations.relevance_circuit import report_scorer_outcome

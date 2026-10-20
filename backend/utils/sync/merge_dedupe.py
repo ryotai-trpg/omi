@@ -13,6 +13,8 @@ import re
 from difflib import SequenceMatcher
 from statistics import median
 
+from utils.text_utils import transcript_word_count
+
 _MERGE_TEXT_DUP_SLOP_SECONDS = 10 * 60
 _MERGE_TEXT_DUP_DURATION_RATIO = 0.25
 # Short backchannels are common twice in one conversation; never text-dedupe them.
@@ -27,7 +29,7 @@ def _normalize_merge_segment_text(text: str | None) -> str:
 def _text_eligible_for_slop_dedupe(text: str) -> bool:
     if len(text) >= _MERGE_TEXT_DUP_MIN_CHARS:
         return True
-    return len(text.split()) >= _MERGE_TEXT_DUP_MIN_WORDS
+    return transcript_word_count(text) >= _MERGE_TEXT_DUP_MIN_WORDS
 
 
 def _segment_abs_range(segment: dict) -> tuple[float, float]:

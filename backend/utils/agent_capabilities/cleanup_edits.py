@@ -14,6 +14,7 @@ from utils.agent_capabilities.guards import timestamp
 from utils.agent_capabilities.errors import ToolError
 
 from utils.agent_capabilities.registry import KINDS as REGISTRY
+from utils.text_utils import transcript_word_count
 
 KINDS = frozenset(name for name, spec in REGISTRY.items() if spec.validation == 'validate_cleanup')
 
@@ -68,7 +69,7 @@ def require_duplicate_capture(left, right, *, authority='dream'):
     if overlap <= 0 or overlap / min((b - a).total_seconds(), (d - c).total_seconds()) < 0.5:
         raise ValueError('agent_captures_do_not_overlap')
     left_speech, right_speech = speech(left).casefold(), speech(right).casefold()
-    if min(len(left_speech.split()), len(right_speech.split())) < 12:
+    if min(transcript_word_count(left_speech), transcript_word_count(right_speech)) < 12:
         raise ValueError('agent_capture_speech_insufficient')
     if max(len(left_speech), len(right_speech)) > 12000 and left_speech != right_speech:
         raise ValueError('agent_capture_similarity_budget')
@@ -138,7 +139,7 @@ def validate_cleanup(edit, records, *, authority='dream'):
             raise ValueError('agent_invalid_language_tag')
         if edit.before != (row.get('language') or '') or edit.before == edit.after:
             raise ValueError('agent_language_changed')
-        if len(speech(row).split()) < 20:
+        if transcript_word_count(speech(row)) < 20:
             raise ValueError('agent_language_speech_insufficient')
 
 
